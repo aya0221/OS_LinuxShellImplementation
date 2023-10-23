@@ -1,0 +1,38 @@
+Part 1 - Command Execution
+
+For the first part, we are implementing the code to handle the execution of any command entered by the user into the shell.
+Firstly, we are checking if the first element of the input 'argv' array of arguments is empty, i.e no command has to be executed. If it is, the process directly exits with a status of 0, which means success as we do not have to execute any command in this case.
+
+Then in the following line: execvp(ecmd->argv[0], ecmd->argv)
+We are making use of the system call "execvp" to execute the program. The execvp system call takes the first element of the argv array as the name of the program to execute and then takes ecmd->argv as an array of arguments for the argv[0] program.
+
+If its successful, this call replaces the current process with the specified program and executes.
+
+In case of failure, it passes the control to the next line and prints the stderror and "Execvp failed" indicating that there was an issue while executing the execvp system call. It then exits with status -1, which typically means failure.
+
+We are using execvp in this code as it allows us to directly execute the program by providing the program's name and a list of arguments as an array of Strings. Execvp is particularly better in the case of command execution as we do not have to specify the whole path of the executable that we have to execute in the parameters of the system call. We can directly give the name of the program to be executed and then execvp will search for it in the directories specified in the 'PATH' environment variable, and then execute the program. Other 'exec' system calls require us to specify the full path to the executable file and that would not work properly in our case of command execution, hence we have used execvp for this implementation
+
+
+Part 2 - I/O Redirection
+
+For the second part, we are implementing the code to extend the shell to handle input and output redirection.
+
+Firstly, we are using the open system call to open the file stored in the rcmd->file with flags such as _RDWR (read and write), O_CREAT. If the file exists, we are opening the file in read and write mode, otherwise we are creating the file as it doesn't exists. we also pass the permissions S_IRUSR | S_IWUSR which gives read and write permissions to the user.
+Then, we do a check to see if the file descriptor fd is less than 0. If it is, it indicates that there was an error while opening the file and thus we throw an error.
+
+If the file was successfully opened, the dup2 system call is used to duplicate the file descriptor fd to the file descriptor specified in rcmd->fd. This is done to set up the redirection.
+Once the duplication has been done, we can close the fd, and then recursively run the runcmd command with rcmd->cmd as the parameter which suggests that rcmd->cmd contains the command that needs to be executed with the redirection in place.
+
+Part 3- Pipes
+
+For this part, we are implementing the code to extend the shell to handle the execution of a command that includes a pipe(|).
+A pipe is used to take the output of one command and use it as the input of another command.
+
+Firstly, we are using the pipe() system call to create a pipe and associate the read and write ends of the file descriptors to the first(p[0]) and second(p[1]) elements of an array p.
+Then, we call the fork() system call to create a child process. The child process handles the left side of the command: the child closes the pipe's read end (close(p[0]);), redirects its standard output to the pipe's write end (dup2(p[1], STDOUT_FILENO);), and then runs the left command (runcmd(pcmd->left);). 
+Conversely, the parent process, responsible for the right side of the command, closes the pipe's write end (close(p[1]);), redirects its standard input to read from the pipe (dup2(p[0], STDIN_FILENO);), and then runs the right command (runcmd(pcmd->right))
+
+Thus, in the following way, the child process executes the command to the left of the pipe(|) and the parent process executes the command to the right of the pipe. This effective establishes a pipeline between the two commands.
+
+
+
